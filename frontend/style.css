@@ -237,6 +237,9 @@ html, body {
   border-color: var(--bios-red);
 }
 
+#modal-backdrop[hidden] {
+  display: none;
+}
 #modal-backdrop {
   position: fixed;
   inset: 0;

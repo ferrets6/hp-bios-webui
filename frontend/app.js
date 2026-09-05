@@ -52,11 +52,26 @@
     el.modalBackdrop.hidden = true;
   }
 
+  function startSlowLoadWarning() {
+    const initial = document.getElementById("initial-loading");
+    const timers = [
+      setTimeout(() => {
+        if (initial) initial.textContent = "Still loading… reading ~180 settings from the NAS over SSH, this can take a few seconds.";
+      }, 2500),
+      setTimeout(() => {
+        if (initial) initial.textContent = "This is taking longer than usual (>10s). The NAS or the SSH connection to it may be unreachable - check the container logs.";
+      }, 10000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }
+
   async function loadAll() {
+    const cancelSlowWarning = startSlowLoadWarning();
     const [menu, attrsResp] = await Promise.all([
       api("/api/menu"),
       api("/api/attributes"),
     ]);
+    cancelSlowWarning();
     state.menu = menu;
     state.attributes = attrsResp.attributes;
     state.passwordStatus = attrsResp.password_status;

@@ -1,0 +1,18 @@
+services:
+  bios-webui:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: hp-bios-webui:local
+    container_name: hp-bios-webui
+    restart: unless-stopped
+    ports:
+      - "${WEBUI_PORT:-8088}:8000"
+    environment:
+      NAS_HOST: ${NAS_HOST}
+      NAS_USER: ${NAS_USER}
+      NAS_SSH_PORT: ${NAS_SSH_PORT:-22}
+      NAS_SSH_KEY_PATH: /run/secrets/nas_ssh_key
+      NAS_CTL_PATH: ${NAS_CTL_PATH}
+    volumes:
+      - ${NAS_SSH_KEY_HOST_PATH}:/run/secrets/nas_ssh_key:ro

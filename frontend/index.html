@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HP ProDesk 400 G5 - Computer Setup</title>
+  <link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+  <div id="bios">
+    <div class="titlebar">
+      <span class="brand">HP</span>
+      <span class="product">Computer Setup (F10 equivalent) &mdash; ProDesk 400 G5 MT</span>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+
+    <div class="body">
+      <nav class="subsections" id="subsections"></nav>
+      <main class="settings" id="settings">
+        <div class="loading">Loading BIOS settings from NAS&hellip;</div>
+      </main>
+    </div>
+
+    <div class="statusbar">
+      <div class="hints">
+        <span><kbd>F10</kbd> Save Changes and Exit</span>
+        <span><kbd>ESC</kbd> Discard Changes</span>
+        <span><kbd>F9</kbd> Apply Factory Defaults</span>
+      </div>
+      <div class="pending" id="pending-indicator" hidden>Reboot required to apply changes</div>
+    </div>
+
+    <div class="footer-actions">
+      <button id="btn-discard" class="key-btn">ESC Discard Changes</button>
+      <button id="btn-reboot-only" class="key-btn">Reboot Now</button>
+      <button id="btn-save" class="key-btn primary">F10 Save Changes and Exit</button>
+    </div>
+  </div>
+
+  <div id="modal-backdrop" hidden>
+    <div id="modal">
+      <div id="modal-title"></div>
+      <div id="modal-body"></div>
+      <div id="modal-actions"></div>
+    </div>
+  </div>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

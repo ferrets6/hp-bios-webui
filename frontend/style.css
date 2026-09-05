@@ -1,0 +1,280 @@
+@import url('https://fonts.googleapis.com/css2?family=Consolas&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+:root {
+  --bios-blue: #0a1e78;
+  --bios-blue-dark: #060f42;
+  --bios-panel: #1531a0;
+  --bios-panel-light: #2a48c4;
+  --bios-text: #e8ecff;
+  --bios-text-dim: #9fb0e8;
+  --bios-highlight-bg: #c9cdd6;
+  --bios-highlight-text: #0a1e78;
+  --bios-border: #6d84e0;
+  --bios-yellow: #ffd452;
+  --bios-red: #ff6b6b;
+  --bios-green: #6bffa0;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  color: var(--bios-text);
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  height: 100%;
+}
+
+#bios {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bios-blue);
+  border: 3px solid var(--bios-border);
+}
+
+.titlebar {
+  background: var(--bios-blue-dark);
+  padding: 10px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  border-bottom: 2px solid var(--bios-border);
+}
+.titlebar .brand {
+  font-weight: 700;
+  color: #fff;
+  background: #0096d6;
+  padding: 1px 8px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+.titlebar .product {
+  color: var(--bios-text-dim);
+  font-size: 13px;
+}
+
+.tabs {
+  display: flex;
+  background: var(--bios-blue-dark);
+  border-bottom: 2px solid var(--bios-border);
+  padding: 0 8px;
+}
+.tab {
+  padding: 8px 22px;
+  cursor: pointer;
+  color: var(--bios-text-dim);
+  border-right: 1px solid var(--bios-panel);
+  font-size: 14px;
+}
+.tab:hover { color: var(--bios-text); }
+.tab.active {
+  background: var(--bios-panel);
+  color: #fff;
+  font-weight: 600;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.subsections {
+  width: 260px;
+  background: var(--bios-blue-dark);
+  border-right: 2px solid var(--bios-border);
+  overflow-y: auto;
+  padding: 6px 0;
+}
+.subsection-item {
+  padding: 7px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--bios-text-dim);
+  white-space: nowrap;
+}
+.subsection-item:hover { color: var(--bios-text); }
+.subsection-item.active {
+  background: var(--bios-highlight-bg);
+  color: var(--bios-highlight-text);
+  font-weight: 600;
+}
+
+.settings {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 24px;
+}
+
+.loading { color: var(--bios-text-dim); font-style: italic; }
+
+.setting-row {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: center;
+  padding: 9px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.setting-row.changed { background: rgba(255, 212, 82, 0.12); }
+.setting-row.readonly .setting-label { color: var(--bios-text-dim); }
+
+.setting-label {
+  font-size: 13.5px;
+}
+.setting-label .unknown-badge {
+  font-size: 10px;
+  color: var(--bios-yellow);
+  border: 1px solid var(--bios-yellow);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 6px;
+}
+
+.setting-control select,
+.setting-control input[type="text"],
+.setting-control input[type="number"] {
+  width: 100%;
+  background: #0d1650;
+  color: var(--bios-text);
+  border: 1px solid var(--bios-border);
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 13px;
+}
+.setting-control select:focus,
+.setting-control input:focus {
+  outline: 2px solid var(--bios-yellow);
+}
+.setting-control .readonly-value {
+  color: var(--bios-text-dim);
+  font-size: 13px;
+  padding: 5px 0;
+}
+
+.toggle {
+  display: inline-flex;
+  border: 1px solid var(--bios-border);
+  overflow: hidden;
+}
+.toggle button {
+  background: #0d1650;
+  color: var(--bios-text-dim);
+  border: none;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+}
+.toggle button.on {
+  background: var(--bios-highlight-bg);
+  color: var(--bios-highlight-text);
+  font-weight: 600;
+}
+
+.action-button {
+  background: var(--bios-panel-light);
+  color: #fff;
+  border: 1px solid var(--bios-border);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+}
+.action-button:hover { background: var(--bios-border); }
+
+.statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bios-blue-dark);
+  padding: 6px 16px;
+  border-top: 2px solid var(--bios-border);
+  font-size: 11.5px;
+  color: var(--bios-text-dim);
+}
+.statusbar .hints { display: flex; gap: 18px; }
+.statusbar kbd {
+  background: #0d1650;
+  border: 1px solid var(--bios-border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #fff;
+  font-size: 11px;
+}
+.statusbar .pending {
+  color: var(--bios-yellow);
+  font-weight: 600;
+}
+
+.footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--bios-blue-dark);
+}
+.key-btn {
+  background: var(--bios-panel);
+  color: var(--bios-text);
+  border: 1px solid var(--bios-border);
+  padding: 8px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+}
+.key-btn:hover { background: var(--bios-panel-light); }
+.key-btn.primary {
+  background: #1a7a3c;
+  border-color: var(--bios-green);
+  font-weight: 700;
+}
+.key-btn.primary:hover { background: #219a4b; }
+.key-btn.danger {
+  background: #7a1a1a;
+  border-color: var(--bios-red);
+}
+
+#modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+#modal {
+  background: var(--bios-panel);
+  border: 2px solid var(--bios-border);
+  min-width: 420px;
+  max-width: 600px;
+  padding: 20px;
+}
+#modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #fff;
+}
+#modal-body {
+  font-size: 13px;
+  color: var(--bios-text);
+  margin-bottom: 18px;
+  line-height: 1.5;
+  max-height: 300px;
+  overflow-y: auto;
+}
+#modal-body .result-line.error { color: var(--bios-red); }
+#modal-body .result-line.ok { color: var(--bios-green); }
+#modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--bios-blue-dark); }
+::-webkit-scrollbar-thumb { background: var(--bios-border); }

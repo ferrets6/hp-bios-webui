@@ -16,6 +16,17 @@ app = FastAPI(title="HP ProDesk 400 G5 - BIOS Web UI")
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 
+@app.middleware("http")
+async def no_cache_static(request, call_next):
+    """This is a low-traffic internal tool, not a CDN-fronted site - always
+    revalidate the frontend so a redeploy doesn't leave browsers rendering a
+    stale HTML/CSS/JS mix indefinitely."""
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/assets/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+
+
 class WriteRequest(BaseModel):
     name: str
     value: str

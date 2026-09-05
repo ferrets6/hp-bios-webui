@@ -1,8 +1,9 @@
+import hashlib
 import logging
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -14,6 +15,19 @@ log = logging.getLogger("bios-webui")
 app = FastAPI(title="HP ProDesk 400 G5 - BIOS Web UI")
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
+
+def _compute_asset_version() -> str:
+    """Hash of the frontend assets, computed once at process start. Used to
+    cache-bust asset URLs so a redeploy can never leave a browser rendering
+    a stale mix of HTML/CSS/JS regardless of HTTP caching semantics."""
+    digest = hashlib.sha256()
+    for filename in ("style.css", "app.js"):
+        digest.update((FRONTEND_DIR / filename).read_bytes())
+    return digest.hexdigest()[:10]
+
+
+ASSET_VERSION = _compute_asset_version()
 
 
 @app.middleware("http")
@@ -130,4 +144,11 @@ app.mount("/assets", StaticFiles(directory=FRONTEND_DIR), name="assets")
 
 @app.get("/")
 def index():
-    return FileResponse(FRONTEND_DIR / "index.html")
+    html = (FRONTEND_DIR / "index.html").read_text(encoding="utf-8")
+    html = html.replace(
+        'href="/assets/style.css"', f'href="/assets/style.css?v={ASSET_VERSION}"'
+    )
+    html = html.replace(
+        'src="/assets/app.js"', f'src="/assets/app.js?v={ASSET_VERSION}"'
+    )
+    return HTMLResponse(html)

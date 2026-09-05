@@ -146,9 +146,9 @@ app.mount("/assets", StaticFiles(directory=FRONTEND_DIR), name="assets")
 def index():
     html = (FRONTEND_DIR / "index.html").read_text(encoding="utf-8")
     html = html.replace(
-        'href="/assets/style.css"', f'href="/assets/style.css?v={ASSET_VERSION}"'
+        'href="assets/style.css"', f'href="assets/style.css?v={ASSET_VERSION}"'
     )
     html = html.replace(
-        'src="/assets/app.js"', f'src="/assets/app.js?v={ASSET_VERSION}"'
+        'src="assets/app.js"', f'src="assets/app.js?v={ASSET_VERSION}"'
     )
     return HTMLResponse(html)

@@ -68,8 +68,8 @@
   async function loadAll() {
     const cancelSlowWarning = startSlowLoadWarning();
     const [menu, attrsResp] = await Promise.all([
-      api("/api/menu"),
-      api("/api/attributes"),
+      api("api/menu"),
+      api("api/attributes"),
     ]);
     cancelSlowWarning();
     state.menu = menu;
@@ -248,7 +248,7 @@
           label: "Reboot now",
           onClick: async () => {
             hideModal();
-            await api("/api/reboot", { method: "POST" });
+            await api("api/reboot", { method: "POST" });
           },
         },
       ]
@@ -291,7 +291,7 @@
     };
     let resp;
     try {
-      resp = await api("/api/apply", {
+      resp = await api("api/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -322,7 +322,7 @@
         label: "Reboot Now",
         onClick: async () => {
           hideModal();
-          await api("/api/reboot", { method: "POST" });
+          await api("api/reboot", { method: "POST" });
         },
       });
     }
@@ -338,7 +338,7 @@
   }
 
   async function refreshAttributes() {
-    const attrsResp = await api("/api/attributes");
+    const attrsResp = await api("api/attributes");
     state.attributes = attrsResp.attributes;
     state.passwordStatus = attrsResp.password_status;
     state.pendingReboot = attrsResp.pending_reboot;

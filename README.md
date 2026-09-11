@@ -67,13 +67,49 @@ git clone <this repo> ~/bios-webui
 cd ~/bios-webui
 cp .env.example .env
 # edit .env with your own NAS_HOST, NAS_USER, NAS_SSH_KEY_HOST_PATH, etc.
+
+# generate the dedicated keypair the container uses to reach NAS_HOST
+# (empty passphrase - the container reads it non-interactively)
+ssh-keygen -t ed25519 -f ./id_ed25519 -N "" -C "bios-webui@$(hostname)"
+ssh-copy-id -i ./id_ed25519.pub <your-ssh-user>@<your-nas-host>
+
 docker compose up -d --build
 ```
 
-The dedicated SSH keypair used by the container to reach the target
-machine should be generated on the host running docker compose, with its
-public half appended to `~/.ssh/authorized_keys` for the SSH user you
-configured in `.env`.
+`id_ed25519`/`id_ed25519.pub` land in the project root and are
+gitignored, never committed. `NAS_SSH_KEY_HOST_PATH` in `.env` just
+needs to point at that file.
+
+### Why a mounted file instead of an env var for the key
+
+The key is passed to the container as a read-only bind-mounted file
+(`/run/secrets/nas_ssh_key`), not as an environment variable, on
+purpose: env vars are visible in plaintext via `docker inspect`, leak
+into every child process the container spawns, and are awkward for
+multi-line PEM/OpenSSH key material (which needs escaping to survive a
+`.env` parser). A mounted, permission-restricted file is the standard
+Docker pattern for secrets like this - it's exactly what Docker
+Compose's own top-level `secrets:` block does under the hood.
+
+### Managing the key
+
+- `id_ed25519` / `id_ed25519.pub` live in the project root, next to
+  `docker-compose.yml`. **Never move or rename `.gitignore`'s entries
+  for them** - that's the only thing standing between this key and a
+  public GitHub repo.
+- Verify at any time that git actually ignores them:
+  `git status --ignored` should list `.env`, `id_ed25519` and
+  `id_ed25519.pub` under "Ignored files", never under "Changes to be
+  committed". `git add -A`/`git add .` cannot pick them up as long as
+  they're in `.gitignore`; only an explicit `git add -f` could.
+- To rotate the key (e.g. after a suspected leak, or when pointing this
+  at a new NAS): delete the two files, regenerate with the
+  `ssh-keygen` command above, and re-run `ssh-copy-id` against the new
+  target - no code or `.env` changes needed, since `NAS_SSH_KEY_HOST_PATH`
+  already points at this fixed location.
+- `docker compose up -d` (no rebuild needed) picks up a rotated key
+  immediately on the next container restart, since it's just a bind
+  mount, not baked into the image.
 
 ## Known limitations
 

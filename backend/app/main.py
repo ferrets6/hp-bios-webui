@@ -6,13 +6,36 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.middleware.sessions import SessionMiddleware
 
-from . import nas_client, schema
+from . import auth, nas_client, schema
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("bios-webui")
 
 app = FastAPI(title="HP ProDesk 400 G5 - BIOS Web UI")
+
+if auth.ENABLED:
+    # Added in this order so SessionMiddleware ends up outermost (Starlette
+    # runs the most-recently-added middleware first) - RequireAuthMiddleware
+    # needs request.session already populated when it runs.
+    app.add_middleware(auth.RequireAuthMiddleware)
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=auth.SESSION_SECRET_KEY,
+        session_cookie="bios_webui_session",
+        max_age=auth.SESSION_MAX_AGE_SECONDS,
+        same_site="lax",
+        https_only=True,
+    )
+    app.include_router(auth.router)
+    log.info("OIDC authentication enabled (issuer=%s)", auth.OIDC_ISSUER_URL)
+else:
+    log.warning(
+        "OIDC authentication is disabled (OIDC_ISSUER_URL unset) - make sure "
+        "this app is only reachable behind a trusted, authenticating reverse "
+        "proxy. See README.md's Authentication section."
+    )
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 

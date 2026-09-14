@@ -146,6 +146,56 @@ Compose's own top-level `secrets:` block does under the hood.
   immediately on the next container restart, since it's just a bind
   mount, not baked into the image.
 
+## Authentication
+
+This app has **no authentication of its own by default**. Given what it
+can do - read and write live BIOS settings, set BIOS passwords, trigger a
+reboot - leaving it reachable by anyone who can route to it, with neither
+this nor a trusted reverse-proxy auth (Authelia, Keycloak forward-auth,
+Tailscale Serve, etc.) in front, is not safe.
+
+Optional OIDC login is built in for self-hosters who don't already run a
+proxy-level auth. It's off by default specifically so it doesn't break
+anyone currently running this behind their own forward-auth setup -
+leave `OIDC_ISSUER_URL` unset and the app behaves exactly as before.
+
+### Enabling it
+
+Set all of `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`,
+`OIDC_REDIRECT_URL`, and `SESSION_SECRET_KEY` in `.env` (see
+`.env.example`) against any OIDC-compliant provider. Once
+`OIDC_ISSUER_URL` is set:
+
+- Every route - the frontend and every `/api/*` endpoint, including
+  read-only ones - requires a valid session. There are no exceptions;
+  BIOS attribute names and values are sensitive on their own.
+- `/login` starts the standard authorization-code flow with PKCE against
+  your provider; `/callback` (register this exact URL with your
+  provider) completes it and sets a signed, httponly, `Secure` session
+  cookie; `/logout` clears it.
+- Sessions use a sliding idle timeout: `SESSION_MAX_AGE_SECONDS` (default
+  3600 = 1h) after the *last* request, not from login, the session
+  expires and you're sent back through `/login`.
+- The `Secure` cookie flag means this only works served over HTTPS
+  (directly, or behind a reverse proxy that terminates TLS and forwards
+  to the app) - browsers won't send a `Secure` cookie back over plain
+  HTTP, so login will appear to silently fail without it.
+
+### Or, use a reverse-proxy auth instead
+
+If this already sits behind Authelia/Keycloak forward-auth/oauth2-proxy/
+Tailscale Serve/etc., leave `OIDC_ISSUER_URL` unset. The two approaches
+aren't meant to be combined - the app has no way to trust proxy-supplied
+identity headers today, so enabling both just means logging in twice.
+
+### Not implemented yet
+
+Flagged as worth a follow-up, not done here: CSRF protection on the
+BIOS-write POST endpoints (`/api/apply`, `/api/password`, `/api/reboot`),
+rate limiting, and whether `/api/reboot` should demand re-entering
+credentials even within an active session (step-up auth) given it's the
+most disruptive action exposed.
+
 ## Known limitations
 
 - Categorization of the 182 exposed attributes into Main/Security/Advanced

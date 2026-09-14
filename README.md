@@ -14,66 +14,101 @@ shows up there as a small directory with `current_value`,
 `possible_values`, and `type` files. Reading is unprivileged; writing
 requires root.
 
-In this setup, the machine in question is a TrueNAS SCALE NAS. TrueNAS's
-root filesystem is a **read-only** ZFS boot environment (that's also why
-`apt`/`dpkg` are disabled on it), so nothing can be installed or dropped
-onto `/usr/local` there. The one writable+executable location is the data
-pool used for Apps (`/mnt/apps-temp`), which is where the control script
-lives.
+There are two supported deploy topologies, picked at runtime by whether
+`NAS_HOST` is set (see `backend/app/nas_client.py`):
+
+- **Local (default)** - the container runs directly on the machine with
+  the sysfs interface (e.g. a Debian box with a normal, writable root
+  filesystem). It runs privileged with
+  `/sys/class/firmware-attributes/hp-bioscfg` bind-mounted in, and
+  reads/writes it directly - no SSH hop.
+- **Remote** - the container runs elsewhere (e.g. a Raspberry Pi) and
+  reaches the target machine over SSH, exactly like the original setup
+  for a TrueNAS box with a read-only root filesystem where nothing could
+  be installed directly on it.
+
+Both modes share the same FastAPI app, frontend, and API - only
+`backend/app/nas_client_local.py` vs. `backend/app/nas_client_ssh.py`
+differs.
 
 ## Architecture
 
 ```
-Browser  --https-->  bios-webui container (on your deployment host)  --ssh-->  target machine (hp-bioscfg sysfs)
+Local:   Browser --http--> bios-webui container (privileged, on the BIOS host) --direct sysfs I/O--> hp-bioscfg
+Remote:  Browser --http--> bios-webui container (on a separate deploy host)    --ssh-->              hp-bioscfg
 ```
 
-- `backend/` - FastAPI app. Reads sysfs over a persistent SSH connection
-  (no privilege needed). Writes and reboot go through a tiny root-owned
-  wrapper script on the NAS (`bios-webui-ctl`), invoked via a narrowly
-  scoped `NOPASSWD` sudoers rule - the container never holds a root
-  password.
+- `backend/` - FastAPI app.
+  - Local mode: reads/writes `/sys/class/firmware-attributes/hp-bioscfg/`
+    directly (bind-mounted into the container). Reboot uses `nsenter` to
+    run `systemctl reboot` inside the host's PID 1 namespace (the
+    container runs with `pid: host`).
+  - Remote mode: reads sysfs over a persistent SSH connection (no
+    privilege needed). Writes and reboot go through a tiny root-owned
+    wrapper script on the target machine (`bios-webui-ctl`), invoked via
+    a narrowly scoped `NOPASSWD` sudoers rule - the container never holds
+    a root password.
+  - Either way, a "Reboot Now" prompt only ever triggers a graceful
+    `systemctl reboot`, never a hard power cycle.
 - `frontend/` - plain HTML/CSS/JS, styled to resemble the real HP BIOS
   blue-screen setup UI. Tabs = Main/Security/Advanced, matching HP's own
   "HP PC Commercial BIOS (UEFI) Setup Administration Guide"
-  (919946-003). Changes are staged locally and only sent to the NAS when
-  you click **F10 Save Changes and Exit**, exactly like the real BIOS.
-  If the kernel reports `pending_reboot`, a "Reboot Now" prompt appears
-  (a graceful `systemctl reboot`, never a hard power cycle).
-- `deploy/nas_setup.sh` - **one-time setup you run yourself directly on
-  the NAS** (it needs your sudo password once). See below.
+  (919946-003). Changes are staged locally and only sent through when you
+  click **F10 Save Changes and Exit**, exactly like the real BIOS. If the
+  kernel reports `pending_reboot`, a "Reboot Now" prompt appears.
+- `deploy/nas_setup.sh` - **remote mode only**, one-time setup you run
+  yourself directly on the target machine (it needs your sudo password
+  once). See below.
 
-## One-time NAS setup
+In local mode the container is privileged and shares the host's PID
+namespace, so a compromise of the app has host-level blast radius -
+acceptable for a single-purpose tool on a personal homelab box, not a
+choice to carry over to a shared or multi-tenant host. Prefer remote mode
+there instead.
 
-This step needs to be run by you, once, directly via SSH on the NAS - it
-edits `/etc/sudoers.d/`, which is sensitive enough that it shouldn't be
-automated blindly. The exact commands were given to you separately.
-It creates:
+## One-time target setup (remote mode only)
 
-1. `/mnt/apps-temp/bios-webui/bios-webui-ctl` - a small root-owned script
-   that only knows how to (a) write one attribute's `current_value`, after
-   validating the name against the real sysfs directory and rejecting any
-   `..`/`/` in it, (b) write a BIOS password via the `authentication/`
-   sysfs interface, or (c) run `systemctl reboot`. Nothing else.
+This step needs to be run by you, once, directly via SSH on the target
+machine - it edits `/etc/sudoers.d/`, which is sensitive enough that it
+shouldn't be automated blindly. The exact commands were given to you
+separately. It creates:
+
+1. A small root-owned script (e.g.
+   `/mnt/apps-temp/bios-webui/bios-webui-ctl`) that only knows how to
+   (a) write one attribute's `current_value`, after validating the name
+   against the real sysfs directory and rejecting any `..`/`/` in it,
+   (b) write a BIOS password via the `authentication/` sysfs interface,
+   or (c) run `systemctl reboot`. Nothing else.
 2. `/etc/sudoers.d/bios-webui` - `<your-ssh-user> ALL=(root) NOPASSWD:
-   <path-to>/bios-webui-ctl` and nothing more. The install path used above
-   (`/mnt/apps-temp/...`) is just an example of a writable+executable data
-   pool; use whatever equivalent exists on your system if its root
-   filesystem is also read-only.
+   <path-to>/bios-webui-ctl` and nothing more.
 
 ## Deploying
+
+Local mode (default - run this directly on the machine with the
+`hp-bioscfg` sysfs interface):
 
 ```bash
 git clone <this repo> ~/bios-webui
 cd ~/bios-webui
 cp .env.example .env
-# edit .env with your own NAS_HOST, NAS_USER, NAS_SSH_KEY_HOST_PATH, etc.
+# edit .env if you want a WEBUI_PORT other than 8088
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+```
+
+Remote mode (run this on the separate deploy host, e.g. a Raspberry Pi):
+
+```bash
+git clone <this repo> ~/bios-webui
+cd ~/bios-webui
+cp .env.example .env
+# edit .env: uncomment and fill in NAS_HOST, NAS_USER, NAS_SSH_KEY_HOST_PATH, NAS_CTL_PATH
 
 # generate the dedicated keypair the container uses to reach NAS_HOST
 # (empty passphrase - the container reads it non-interactively)
 ssh-keygen -t ed25519 -f ./id_ed25519 -N "" -C "bios-webui@$(hostname)"
 ssh-copy-id -i ./id_ed25519.pub <your-ssh-user>@<your-nas-host>
 
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.remote.yml up -d --build
 ```
 
 `id_ed25519`/`id_ed25519.pub` land in the project root and are

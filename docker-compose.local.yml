@@ -1,0 +1,12 @@
+# Default deploy mode: the container runs directly on the machine that has
+# the hp-bioscfg sysfs interface. No NAS_* env vars needed - nas_client.py
+# picks the local backend automatically when NAS_HOST is unset.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+#
+services:
+  bios-webui:
+    privileged: true
+    pid: host
+    volumes:
+      - /sys/class/firmware-attributes/hp-bioscfg:/sys/class/firmware-attributes/hp-bioscfg
